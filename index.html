@@ -2250,6 +2250,16 @@ function renderGatGrid(){
   box.innerHTML = html;
 }
 
+let wakeLock = null;
+async function requestWakeLock(){
+  try{
+    if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
+  }catch(err){ /* unsupported (older iOS) or denied — practice still works, screen just may sleep */ }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && S.micOn) requestWakeLock();
+});
+
 async function enableMic(){
   if (S.micOn) return;
   try{
@@ -2264,6 +2274,7 @@ async function enableMic(){
     $('micPill').classList.add('on'); $('micPill').classList.remove('warn');
     $('micLabel').textContent = 'Listening'; hideHint();
     setInterval(detectLoop, 55);
+    requestWakeLock();
   }catch(err){
     $('micPill').classList.add('warn'); $('micLabel').textContent = 'Mic blocked';
     showHint('<b>The browser would not hand over the mic.</b> Chrome blocks microphone access on ' +

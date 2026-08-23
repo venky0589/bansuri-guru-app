@@ -1,7 +1,7 @@
 /* Bansuri Guru service worker.
    HTML is network-first so a new build lands as soon as you reload online;
    icons and the manifest stay cache-first because they rarely change. */
-const CACHE = "bansuri-guru-v2";
+const CACHE = "bansuri-guru-v3";
 const CORE = [
   "./",
   "./index.html",
