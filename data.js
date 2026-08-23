@@ -347,11 +347,14 @@ const GESTURES = [
 const GRAMMAR = {
   desh:{
     asc:[0,2,5,7,11], desc:[0,2,4,5,7,9,10],
-    resolve:{4:[2,0]},
+    /* shuddha Ni leads into Sa, komal ni falls away to Dha, Ga falls to Re */
+    resolve:{4:[2,0], 11:[0], 10:[9,7]},
+    /* komal ni is entered from Sa above, shuddha Ni from Pa below */
+    approach:{10:[0], 11:[7], 9:[10], 4:[5,2]},
     vakra:[[4,2,4,0],[5,4,2,4,0],[2,4,2,0]],
     end:[0,2,7],
     motifs:[
-      [-1,0,2],[-3,-1,0],[0,2,5],[2,5,7],[5,7,11],[7,11,12],[11,12],
+      [-1,0,2],[-5,-1,0],[0,2,5],[2,5,7],[5,7,11],[7,11,12],[11,12],
       [12,10,9],[10,9,7],[9,7,5],[7,5,4,2],[5,4,2],[4,2,0],[5,4,2,4,0],
       [2,5,7,5],[0,2,5,4,2],[12,14,12,10,9],[7,11,12,10,9]]
   },
@@ -382,7 +385,7 @@ const GRAMMAR = {
   },
   all:{
     asc:[0,1,2,3,4,5,6,7,8,9,10,11], desc:[0,1,2,3,4,5,6,7,8,9,10,11],
-    resolve:{}, vakra:[], end:[0,7], motifs:[]
+    resolve:{}, vakra:[], end:[0,7], motifs:[], chromatic:true
   }
 };
 
@@ -411,6 +414,20 @@ function grammarFault(phrase, raga){
     const prev = pc(phrase[i-1]);
     if (g.resolve[prev] && !exempt[i-1] && !g.resolve[prev].includes(cur))
       return prev + ' must resolve to ' + g.resolve[prev].join(' or ');
+    if (g.approach && g.approach[cur] && !exempt[i] && !g.approach[cur].includes(prev))
+      return cur + ' cannot be approached from ' + prev;
+    /* Two variants of one swara are the raga's ascending and descending forms.
+       They belong in opposite halves of a phrase, never side by side: Desh
+       climbs on shuddha Ni and falls on komal ni, so "n N" is a trill between
+       two things that should never meet. */
+    if (!g.chromatic){
+      const inRaga = p => g.asc.includes(p) || g.desc.includes(p);
+      for (const [a,b] of [[1,2],[3,4],[5,6],[8,9],[10,11]]){
+        if (!inRaga(a) || !inRaga(b)) continue;
+        if ((prev === a && cur === b) || (prev === b && cur === a))
+          return 'both forms of the same swara cannot sit side by side (' + a + '/' + b + ')';
+      }
+    }
   }
   const last = pc(phrase[phrase.length-1]);
   if (g.resolve[last]) return 'a phrase cannot be left hanging on ' + last;
