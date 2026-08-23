@@ -1,10 +1,13 @@
 /* Bansuri Guru service worker.
-   HTML is network-first so a new build lands as soon as you reload online;
-   icons and the manifest stay cache-first because they rarely change. */
-const CACHE = "bansuri-guru-v3";
+   HTML and the app scripts are network-first so a new build lands on reload;
+   icons and the manifest stay cache-first. */
+const CACHE = "bansuri-guru-v4";
 const CORE = [
   "./",
   "./index.html",
+  "./styles.css",
+  "./data.js",
+  "./app.js",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
@@ -13,12 +16,7 @@ const CORE = [
 ];
 
 self.addEventListener("install", e => {
-  e.waitUntil(
-    caches.open(CACHE).then(c =>
-      /* one bad icon path shouldn't abort the whole install */
-      Promise.allSettled(CORE.map(u => c.add(u)))
-    )
-  );
+  e.waitUntil(caches.open(CACHE).then(c => Promise.allSettled(CORE.map(u => c.add(u)))));
   self.skipWaiting();
 });
 
@@ -30,26 +28,26 @@ self.addEventListener("activate", e => {
   );
 });
 
-self.addEventListener("message", e => {
-  if (e.data === "skipWaiting") self.skipWaiting();
-});
+self.addEventListener("message", e => { if (e.data === "skipWaiting") self.skipWaiting(); });
 
-const isHTML = req =>
-  req.mode === "navigate" ||
-  (req.headers.get("accept") || "").includes("text/html");
+const fresh = req => {
+  const u = new URL(req.url);
+  return req.mode === "navigate" ||
+         (req.headers.get("accept") || "").includes("text/html") ||
+         /\.(js|css)$/.test(u.pathname);
+};
 
 self.addEventListener("fetch", e => {
   const req = e.request;
   if (req.method !== "GET") return;
   if (new URL(req.url).origin !== self.location.origin) return;
 
-  if (isHTML(req)) {
-    /* network-first: always try for a fresh build, fall back to cache offline */
+  if (fresh(req)) {
     e.respondWith(
       fetch(req)
         .then(res => {
           const copy = res.clone();
-          caches.open(CACHE).then(c => c.put("./index.html", copy));
+          caches.open(CACHE).then(c => c.put(req, copy));
           return res;
         })
         .catch(() => caches.match(req).then(r => r || caches.match("./index.html")))
@@ -57,14 +55,10 @@ self.addEventListener("fetch", e => {
     return;
   }
 
-  /* everything else: cache-first, refresh in the background */
   e.respondWith(
     caches.match(req).then(cached => {
       const net = fetch(req)
-        .then(res => {
-          if (res.ok) caches.open(CACHE).then(c => c.put(req, res.clone()));
-          return res;
-        })
+        .then(res => { if (res.ok) caches.open(CACHE).then(c => c.put(req, res.clone())); return res; })
         .catch(() => cached);
       return cached || net;
     })
