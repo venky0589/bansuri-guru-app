@@ -1,0 +1,1469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LeaseTune Pro: Commercial Rent Auto-Balancer & Capex Recovery Engine</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- FontAwesome 6 Icons CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            forest: {
+              DEFAULT: '#047857',
+              dark: '#064e3b',
+              light: '#d1fae5',
+            },
+            debt: {
+              DEFAULT: '#b45309',
+              dark: '#78350f',
+              light: '#fef3c7',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #f8fafc;
+      color: #0f172a;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    input[type=range] {
+      accent-color: #047857;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .active-view-btn {
+      background-color: #047857 !important;
+      color: #ffffff !important;
+      box-shadow: 0 2px 8px rgba(4, 120, 87, 0.25);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col custom-scrollbar">
+
+  <!-- Toast Notification System -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none flex items-center gap-3 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl border border-slate-700">
+    <i class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+    <span id="toast-msg" class="text-xs sm:text-sm font-medium">Copied to clipboard!</span>
+  </div>
+
+  <!-- Header -->
+  <header class="border-b border-slate-200 bg-white sticky top-0 z-40 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-forest flex items-center justify-center text-white shadow-md shadow-forest/20">
+          <i class="fa-solid fa-scale-balanced text-lg"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight">LeaseTune Pro</h1>
+            <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-forest border border-emerald-300">
+              Auto-Balancer &amp; Debt Amortizer
+            </span>
+          </div>
+          <p class="text-xs text-slate-500">Commercial Shed Lease Tuner &bull; Up to ₹10 Lakhs Capex &bull; Ulavapadu Corridor</p>
+        </div>
+      </div>
+
+      <!-- View Switcher -->
+      <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
+        <button id="btn-tab-owner" onclick="switchView('owner')" class="active-view-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all">
+          <i class="fa-solid fa-chart-line text-xs"></i>
+          <span>Owner Intelligence</span>
+        </button>
+        <button id="btn-tab-tenant" onclick="switchView('tenant')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-slate-600 hover:text-slate-900 transition-all">
+          <i class="fa-solid fa-handshake text-xs"></i>
+          <span>Tenant Pitch Deck</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Body -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-1">
+
+    <!-- High-Capex Alert Banner -->
+    <div id="high-capex-banner" class="mb-5 p-4 rounded-2xl border-2 border-amber-300 bg-gradient-to-r from-amber-50 via-white to-amber-50 shadow-xs transition-all">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-start gap-3">
+          <div class="w-10 h-10 rounded-xl bg-amber-600 text-white flex items-center justify-center text-lg flex-shrink-0 shadow-xs">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-xs font-extrabold uppercase tracking-wider text-amber-950">
+                Out-of-Pocket Construction Capex: <span id="banner-capex-disp" class="font-mono text-amber-900">₹10,00,000</span>
+              </h2>
+              <span id="banner-risk-pill" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200 text-amber-900">High Debt Exposure</span>
+            </div>
+            <p class="text-xs text-amber-950 mt-1 leading-relaxed">
+              Carrying cost on this investment is <strong id="banner-carrying-cost" class="font-mono">₹6,667/mo</strong> (@ <span class="lbl-fd-pct">8%</span>). 
+              <strong>Safeguard:</strong> Do not rely on casual 11-month deeds. Secure a <strong>36-Month Lock-in Registered Lease Deed</strong> at Singarayakonda SRO with minimum 5-6 months advance to protect your capital.
+            </p>
+          </div>
+        </div>
+        <button onclick="applyPreset('guard10L')" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-700 hover:bg-amber-800 text-white shadow-xs transition whitespace-nowrap">
+          <i class="fa-solid fa-shield mr-1"></i>Apply ₹10L Capex Guard
+        </button>
+      </div>
+    </div>
+
+    <!-- Quick Presets Carousel -->
+    <div class="mb-6 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+          <i class="fa-solid fa-bolt text-amber-500"></i> Compare Discussed Deals &amp; Tenant Proposals:
+        </span>
+        <span class="text-[10px] text-slate-500">Click any preset to simulate instantly</span>
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 text-xs">
+        <button onclick="applyPreset('tenantA')" class="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-left transition">
+          <div class="font-bold text-slate-900">Tenant Offer A</div>
+          <div class="text-[10px] text-slate-500">₹11K + 5%/yr after Yr 2 (3 mo adv)</div>
+        </button>
+        <button onclick="applyPreset('tenantB')" class="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-left transition">
+          <div class="font-bold text-slate-900">Tenant Offer B</div>
+          <div class="text-[10px] text-slate-500">₹12K + 5% / 2 Yrs (4 mo adv)</div>
+        </button>
+        <button onclick="applyPreset('tenantC')" class="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-left transition">
+          <div class="font-bold text-forest">Tenant Offer C</div>
+          <div class="text-[10px] text-forest font-semibold">₹12K + 5% Yearly (4 mo adv)</div>
+        </button>
+        <button onclick="applyPreset('balancedParity')" class="p-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-left transition">
+          <div class="font-bold text-indigo-900">Balanced Parity</div>
+          <div class="text-[10px] text-indigo-700">₹12K + 10% / 2 Yrs (4 mo adv)</div>
+        </button>
+        <button onclick="applyPreset('guard10L')" class="p-2 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-left transition">
+          <div class="font-bold text-amber-900">Owner 10L Guard</div>
+          <div class="text-[10px] text-amber-800 font-semibold">₹12K + 10% Yearly (6 mo adv)</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Workspace: 2 Columns -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+      <!-- LEFT COLUMN: CONTROLS & AUTO-TUNER (5 Cols) -->
+      <div class="lg:col-span-5 space-y-5">
+
+        <!-- Auto-Tuner Mode Selector -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+              <i class="fa-solid fa-sliders text-forest"></i>
+              Interconnected Auto-Tuner Mode
+            </span>
+            <span id="auto-mode-badge" class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+              Manual (Free Tuner)
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-500 mb-3">
+            Select which knob auto-adjusts to preserve your profit target, or choose Manual to tune freely.
+          </p>
+
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <button type="button" onclick="setAutoTuneMode('manual')" id="btn-mode-manual" class="p-2.5 rounded-xl border text-left font-bold transition bg-slate-900 text-white border-slate-900 shadow-xs">
+              <div class="flex items-center justify-between">
+                <span>1. Manual / Free</span>
+                <i class="fa-solid fa-unlock text-[10px]"></i>
+              </div>
+              <div class="text-[10px] font-normal opacity-80 mt-0.5">Move all sliders freely</div>
+            </button>
+
+            <button type="button" onclick="setAutoTuneMode('advance')" id="btn-mode-advance" class="p-2.5 rounded-xl border text-left font-semibold transition bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100">
+              <div class="flex items-center justify-between">
+                <span>2. Auto Advance</span>
+                <i class="fa-solid fa-wand-magic-sparkles text-[10px]"></i>
+              </div>
+              <div class="text-[10px] font-normal text-slate-500 mt-0.5">Auto-solves advance months</div>
+            </button>
+
+            <button type="button" onclick="setAutoTuneMode('hike')" id="btn-mode-hike" class="p-2.5 rounded-xl border text-left font-semibold transition bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100">
+              <div class="flex items-center justify-between">
+                <span>3. Auto Hike %</span>
+                <i class="fa-solid fa-percent text-[10px]"></i>
+              </div>
+              <div class="text-[10px] font-normal text-slate-500 mt-0.5">Auto-solves increment %</div>
+            </button>
+
+            <button type="button" onclick="setAutoTuneMode('rent')" id="btn-mode-rent" class="p-2.5 rounded-xl border text-left font-semibold transition bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100">
+              <div class="flex items-center justify-between">
+                <span>4. Auto Base Rent</span>
+                <i class="fa-solid fa-arrow-up-right-dots text-[10px]"></i>
+              </div>
+              <div class="text-[10px] font-normal text-slate-500 mt-0.5">Auto-solves starting rent</div>
+            </button>
+          </div>
+
+          <!-- Benchmark Lock Strip -->
+          <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+            <span class="text-[11px] text-slate-500">
+              Target 4-Yr Profit: <strong id="disp-target-benchmark" class="font-mono text-slate-800">₹6,20,000</strong>
+            </span>
+            <button onclick="lockCurrentAsTarget()" class="text-[10px] font-bold text-forest bg-emerald-50 hover:bg-emerald-100 px-2 py-1 rounded border border-emerald-300 transition">
+              <i class="fa-solid fa-lock mr-1"></i>Lock Current as Target
+            </button>
+          </div>
+        </div>
+
+        <!-- Tuner Sliders Card -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+          
+          <!-- Knob 1: Monthly Rent -->
+          <div id="wrapper-knob-rent" class="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 transition-all">
+            <div class="flex justify-between items-center mb-1">
+              <div class="flex items-center gap-1.5">
+                <label class="text-xs font-bold text-slate-900">Starting Base Rent</label>
+                <span id="badge-auto-rent" class="hidden text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-100 text-forest font-mono">Auto-Tuned</span>
+              </div>
+              <span id="disp-rent" class="font-mono text-base font-bold text-forest">₹12,000</span>
+            </div>
+            <input type="range" id="input-rent" min="8000" max="25000" step="500" value="12000" class="w-full h-2 bg-slate-200 rounded-lg cursor-pointer">
+            <div class="flex justify-between text-[10px] text-slate-500 mt-1 font-mono">
+              <span>₹8,000</span>
+              <span>₹12,000 (Std)</span>
+              <span>₹18,000</span>
+              <span>₹25,000</span>
+            </div>
+          </div>
+
+          <!-- Knob 2: Increment Timing Model -->
+          <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+            <label class="block text-xs font-bold text-slate-900 mb-2">Escalation Timing Model</label>
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              
+              <button type="button" onclick="setTiming('annual')" id="opt-annual" class="p-2 rounded-xl border text-left font-bold transition bg-emerald-50 border-emerald-500 text-forest">
+                <div class="flex items-center justify-between">
+                  <span>Annual (% Every Yr)</span>
+                  <i class="fa-solid fa-check text-[10px]"></i>
+                </div>
+                <div class="text-[10px] font-normal text-slate-500">e.g. 5% or 10% yearly</div>
+              </button>
+
+              <button type="button" onclick="setTiming('biannual')" id="opt-biannual" class="p-2 rounded-xl border text-left font-semibold transition bg-white border-slate-200 text-slate-700">
+                <div class="flex items-center justify-between">
+                  <span>Bi-Annual (% / 2 Yrs)</span>
+                </div>
+                <div class="text-[10px] font-normal text-slate-500">e.g. 5% every 2 yrs</div>
+              </button>
+
+              <button type="button" onclick="setTiming('freeze2yr')" id="opt-freeze2yr" class="p-2 rounded-xl border text-left font-semibold transition bg-white border-slate-200 text-slate-700">
+                <div class="flex items-center justify-between">
+                  <span>2-Yr Freeze $\rightarrow$ Annual</span>
+                </div>
+                <div class="text-[10px] font-normal text-slate-500">Yrs 1-2 flat, then X%/yr</div>
+              </button>
+
+              <button type="button" onclick="setTiming('flat1000')" id="opt-flat1000" class="p-2 rounded-xl border text-left font-semibold transition bg-white border-slate-200 text-slate-700">
+                <div class="flex items-center justify-between">
+                  <span>Flat ₹ Step-Up / Yr</span>
+                </div>
+                <div class="text-[10px] font-normal text-slate-500">e.g. +₹1,000/yr flat</div>
+              </button>
+
+            </div>
+          </div>
+
+          <!-- Knob 3: % Hike or Flat ₹ -->
+          <div id="wrapper-knob-hike" class="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 transition-all">
+            <div class="flex justify-between items-center mb-1">
+              <div class="flex items-center gap-1.5">
+                <label id="lbl-hike" class="text-xs font-bold text-slate-900">Escalation Rate</label>
+                <span id="badge-auto-hike" class="hidden text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-100 text-forest font-mono">Auto-Tuned</span>
+              </div>
+              <span id="disp-hike-val" class="font-mono text-base font-bold text-forest">5.0%</span>
+            </div>
+            <input type="range" id="input-hike" min="0" max="25" step="0.5" value="5" class="w-full h-2 bg-slate-200 rounded-lg cursor-pointer">
+            
+            <!-- Quick % Hike Buttons -->
+            <div id="hike-quick-buttons" class="flex items-center gap-1.5 mt-2">
+              <span class="text-[10px] text-slate-500">Quick:</span>
+              <button onclick="setQuickHike(5)" class="text-[10px] font-mono px-2 py-0.5 rounded bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold">5%</button>
+              <button onclick="setQuickHike(8)" class="text-[10px] font-mono px-2 py-0.5 rounded bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold">8%</button>
+              <button onclick="setQuickHike(10)" class="text-[10px] font-mono px-2 py-0.5 rounded bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold">10%</button>
+              <button onclick="setQuickHike(15)" class="text-[10px] font-mono px-2 py-0.5 rounded bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold">15%</button>
+            </div>
+          </div>
+
+          <!-- Knob 4: Advance Months -->
+          <div id="wrapper-knob-advance" class="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 transition-all">
+            <div class="flex justify-between items-center mb-1">
+              <div class="flex items-center gap-1.5">
+                <label class="text-xs font-bold text-slate-900">Security Advance Deposit</label>
+                <span id="badge-auto-advance" class="hidden text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-100 text-forest font-mono">Auto-Tuned</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span id="disp-advance-amt" class="text-xs font-mono text-slate-600 font-semibold">(₹48,000)</span>
+                <span id="disp-advance-mo" class="font-mono text-base font-bold text-forest">4.0 Months</span>
+              </div>
+            </div>
+            <input type="range" id="input-advance" min="2" max="12" step="0.5" value="4" class="w-full h-2 bg-slate-200 rounded-lg cursor-pointer">
+            <div class="flex justify-between text-[10px] text-slate-500 mt-1 font-mono">
+              <span>2 Mo</span>
+              <span>4 Mo (Std)</span>
+              <span>6 Mo</span>
+              <span>8 Mo</span>
+              <span>12 Mo (Max)</span>
+            </div>
+          </div>
+
+          <!-- Knob 5: Shed Capex (Up to ₹10 Lakhs) -->
+          <div class="p-3.5 rounded-xl bg-amber-50/60 border border-amber-200">
+            <div class="flex justify-between items-center mb-1">
+              <div class="flex items-center gap-1.5">
+                <label class="text-xs font-extrabold text-amber-950">Shed Construction Capex</label>
+                <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 font-mono">Amortized Cost</span>
+              </div>
+              <span id="disp-capex" class="font-mono text-base font-extrabold text-amber-900">₹10,00,000</span>
+            </div>
+            <input type="range" id="input-capex" min="100000" max="1000000" step="25000" value="1000000" class="w-full h-2 bg-amber-200 rounded-lg cursor-pointer">
+            
+            <!-- Quick Capex Buttons -->
+            <div class="flex items-center justify-between gap-1 mt-2">
+              <button onclick="setQuickCapex(250000)" class="text-[10px] px-2 py-0.5 rounded bg-white hover:bg-amber-100 border border-amber-300 text-amber-900 font-semibold">₹2.5L Basic</button>
+              <button onclick="setQuickCapex(500000)" class="text-[10px] px-2 py-0.5 rounded bg-white hover:bg-amber-100 border border-amber-300 text-amber-900 font-semibold">₹5.0L Semi</button>
+              <button onclick="setQuickCapex(1000000)" class="text-[10px] px-2 py-0.5 rounded bg-amber-200 hover:bg-amber-300 border border-amber-400 text-amber-950 font-bold">₹10.0L Full Civil</button>
+            </div>
+          </div>
+
+          <!-- Knob 6: FD / Capital Cost Rate -->
+          <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-xs font-bold text-slate-900">FD Yield / Debt Cost Rate</label>
+              <span id="disp-fd" class="font-mono text-sm font-bold text-slate-900">8.0% p.a.</span>
+            </div>
+            <input type="range" id="input-fd" min="4" max="12" step="0.5" value="8" class="w-full h-2 bg-slate-200 rounded-lg cursor-pointer">
+            <div class="flex justify-between text-[10px] text-slate-500 mt-1 font-mono">
+              <span>4.0%</span>
+              <span>8.0% (Bank Standard)</span>
+              <span>12.0%</span>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- RIGHT COLUMN: VIEWS (7 Cols) -->
+      <div class="lg:col-span-7 space-y-6">
+
+        <!-- ================= VIEW 1: OWNER INTELLIGENCE ================= -->
+        <div id="view-owner" class="space-y-6">
+
+          <!-- Real-Time Parity Health Meter -->
+          <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+            <div class="flex items-center justify-between mb-1.5">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-slate-800 uppercase tracking-wider">Owner 4-Year Parity Health:</span>
+                <span id="parity-status-pill" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-forest">
+                  Balanced (±0)
+                </span>
+              </div>
+              <span id="parity-diff-disp" class="font-mono text-xs font-bold text-slate-700">₹0 vs Benchmark</span>
+            </div>
+            <!-- Progress Bar -->
+            <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+              <div id="parity-progress-bar" class="h-full bg-forest transition-all duration-300" style="width: 100%;"></div>
+            </div>
+          </div>
+
+          <!-- 4 Core Metrics Cards -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            
+            <!-- Card 1: Day-1 Capex Liquidation -->
+            <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs border-l-4 border-l-forest">
+              <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Day-1 Advance Cash</span>
+              <div id="kpi-day1-cash" class="text-base font-mono font-bold text-slate-900 mt-1">₹48,000</div>
+              <div id="kpi-day1-pct" class="text-[11px] font-mono text-forest font-semibold">4.8% of Capex</div>
+            </div>
+
+            <!-- Card 2: Capex Break-Even Month -->
+            <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs border-l-4 border-l-amber-600">
+              <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Capex Payoff Month</span>
+              <div id="kpi-breakeven-mo" class="text-base font-mono font-bold text-amber-800 mt-1">Month 68</div>
+              <div id="kpi-breakeven-detail" class="text-[11px] text-slate-500">5.7 Years to Zero Debt</div>
+            </div>
+
+            <!-- Card 3: Capital Carrying Cost & Net Land Yield -->
+            <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs border-l-4 border-l-blue-600">
+              <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Monthly Interest Cost</span>
+              <div id="kpi-cap-cost" class="text-base font-mono font-bold text-blue-700 mt-1">₹6,667 / mo</div>
+              <div id="kpi-land-yield" class="text-[11px] font-mono text-slate-500 font-semibold">Net Land: ₹5,333/mo</div>
+            </div>
+
+            <!-- Card 4: 4-Yr Realization -->
+            <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs border-l-4 border-l-purple-600">
+              <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">4-Yr Total Value</span>
+              <div id="kpi-4yr-total" class="text-base font-mono font-bold text-purple-700 mt-1">₹6,28,800</div>
+              <div class="text-[11px] text-slate-500 font-mono">Rent + Adv Interest</div>
+            </div>
+
+          </div>
+
+          <!-- Debt Payoff & Rent Accumulation Chart -->
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+            <div class="flex flex-wrap items-center justify-between mb-3 gap-2">
+              <div>
+                <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <i class="fa-solid fa-chart-line text-forest"></i>
+                  Cumulative Rent vs. Unrecovered Capex Debt (6-Year Trajectory)
+                </h3>
+                <p class="text-[11px] text-slate-500">Notice where Cumulative Rent crosses the Capex Debt line to achieve full break-even</p>
+              </div>
+              <span id="chart-crossover-badge" class="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-800 border border-slate-200">
+                Tracking Crossover
+              </span>
+            </div>
+            <div class="h-64 sm:h-72 w-full">
+              <canvas id="debtChart"></canvas>
+            </div>
+          </div>
+
+          <!-- 6-Year Cash Flow Ledger -->
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Year-by-Year Cash Flow Ledger</h3>
+              <span class="text-[11px] text-slate-500 font-mono">Capex Debt: ₹<span id="tbl-capex-disp">10,00,000</span></span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs text-left">
+                <thead class="bg-slate-100 text-slate-800 uppercase font-bold text-[10px] border-b border-slate-200">
+                  <tr>
+                    <th class="py-2.5 px-3">Year</th>
+                    <th class="py-2.5 px-3">Monthly Rent</th>
+                    <th class="py-2.5 px-3">Annual Rent</th>
+                    <th class="py-2.5 px-3">Adv. Interest (@ <span class="lbl-fd-pct">8%</span>)</th>
+                    <th class="py-2.5 px-3">Unrecovered Debt</th>
+                    <th class="py-2.5 px-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="schedule-tbody" class="divide-y divide-slate-100 font-mono text-slate-800">
+                  <!-- Generated by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ================= VIEW 2: TENANT PLEASING PITCH DECK ================= -->
+        <div id="view-tenant" class="hidden space-y-6">
+
+          <!-- Hero Pitch Card -->
+          <div class="bg-white p-6 rounded-2xl border-2 border-emerald-600/30 shadow-xs relative overflow-hidden bg-gradient-to-br from-white via-slate-50 to-emerald-50/40">
+            <div class="flex flex-wrap items-center justify-between pb-4 border-b border-slate-200 gap-3">
+              <div>
+                <span class="text-[10px] font-bold text-forest tracking-widest uppercase bg-emerald-100 px-2.5 py-1 rounded-md">
+                  <i class="fa-solid fa-handshake mr-1"></i>Commercial Lease Proposal
+                </span>
+                <h3 class="text-xl font-extrabold text-slate-900 mt-1">Ulavapadu Highway Corridor Road-Facing Shed</h3>
+                <p class="text-xs text-slate-500">864 Sq Ft (12 Ankanams) &bull; Heavy Trusses &amp; High Clearance &bull; 3-Phase Commercial Power</p>
+              </div>
+              <div class="text-right">
+                <span class="text-xs text-slate-500 block">Negotiated Starting Rent</span>
+                <span id="tenant-hero-rent" class="text-2xl font-black text-slate-900 font-mono">₹12,000<span class="text-xs font-normal text-slate-500">/mo</span></span>
+              </div>
+            </div>
+
+            <!-- The 3 Psychological Framing Pillars -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mt-5">
+              
+              <!-- Pillar 1: Daily Operational Burden -->
+              <div class="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs">
+                <div class="w-8 h-8 rounded-lg bg-emerald-100 text-forest flex items-center justify-center font-bold text-sm mb-2">
+                  <i class="fa-solid fa-mug-hot"></i>
+                </div>
+                <div class="text-[10px] font-bold text-slate-500 uppercase">Daily Operational Burden</div>
+                <div id="tenant-daily-cost" class="text-lg font-bold text-slate-900 font-mono mt-0.5">₹395 / day</div>
+                <p class="text-[11px] text-slate-500 mt-1">Comparable to modest daily staff tea and refreshment expenses.</p>
+              </div>
+
+              <!-- Pillar 2: Startup Runway Shield -->
+              <div class="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs">
+                <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-sm mb-2">
+                  <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div class="text-[10px] font-bold text-slate-500 uppercase">Business Runway Shield</div>
+                <div id="tenant-runway" class="text-lg font-bold text-amber-900 font-mono mt-0.5">Predictable 5% Annual Step</div>
+                <p class="text-[11px] text-slate-500 mt-1">Controlled, predictable escalation that allows your customer base to mature.</p>
+              </div>
+
+              <!-- Pillar 3: Zero Civil Setup Debt for Tenant -->
+              <div class="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs">
+                <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm mb-2">
+                  <i class="fa-solid fa-warehouse"></i>
+                </div>
+                <div class="text-[10px] font-bold text-slate-500 uppercase">Zero Setup Capex for You</div>
+                <div id="tenant-absorbed-capex" class="text-lg font-bold text-blue-800 font-mono mt-0.5">₹10.0L Infrastructure</div>
+                <p class="text-[11px] text-slate-500 mt-1">Owner absorbed all civil, truss, and roofing expenses upfront.</p>
+              </div>
+
+            </div>
+
+            <!-- Capital Safety Certificate -->
+            <div class="mt-4 p-3.5 rounded-xl bg-white border border-emerald-300 flex items-center gap-3 shadow-2xs">
+              <div class="w-8 h-8 rounded-lg bg-emerald-50 text-forest flex items-center justify-center text-sm flex-shrink-0">
+                <i class="fa-solid fa-vault"></i>
+              </div>
+              <p class="text-xs text-slate-800 leading-tight">
+                <strong>100% Capital Safety Guarantee:</strong> The security advance of <strong id="tenant-deposit-disp" class="font-mono text-forest">₹48,000</strong> is documented in the registered lease deed as your refundable asset, returned in full at lease conclusion.
+              </p>
+            </div>
+
+          </div>
+
+          <!-- 3-Phase Roadmap -->
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+            <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3">Transparent 3-Stage Commercial Growth Path</h4>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+              
+              <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] font-bold text-forest uppercase">Stage 1: Incubation</span>
+                  <span class="text-[10px] font-mono text-slate-500 font-semibold">Yr 1</span>
+                </div>
+                <div class="font-bold text-sm text-slate-900 mt-1" id="road-p1">₹12,000 / month</div>
+                <p class="text-[11px] text-slate-500 mt-1">Low baseline rent preserving cash flow for your stock and working capital.</p>
+              </div>
+
+              <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] font-bold text-amber-700 uppercase">Stage 2: Expansion</span>
+                  <span class="text-[10px] font-mono text-slate-500 font-semibold">Yr 2</span>
+                </div>
+                <div class="font-bold text-sm text-slate-900 mt-1" id="road-p2">₹12,600 / month</div>
+                <p class="text-[11px] text-slate-500 mt-1">Small, manageable adjustment once daily footfall is established.</p>
+              </div>
+
+              <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] font-bold text-blue-700 uppercase">Stage 3: Established</span>
+                  <span class="text-[10px] font-mono text-slate-500 font-semibold">Yr 3+</span>
+                </div>
+                <div class="font-bold text-sm text-slate-900 mt-1" id="road-p3">₹13,230 / month</div>
+                <p class="text-[11px] text-slate-500 mt-1">Long-term tenancy security with guaranteed first right of renewal.</p>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- BILINGUAL NEGOTIATION SCRIPTS & LEGAL CLAUSES -->
+    <section class="mt-8 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+      <div class="flex flex-wrap items-center justify-between pb-4 border-b border-slate-200 gap-3">
+        <div>
+          <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-comments text-forest"></i>
+            Live Bilingual Negotiation Scripts &amp; Legal Clauses
+          </h2>
+          <p class="text-xs text-slate-500">Dynamically updated as you adjust sliders. Click to copy directly into WhatsApp or send to your document writer.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
+        
+        <!-- Telugu Pitch Script -->
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <i class="fa-solid fa-comment-dots text-forest"></i> Telugu Verbal / WhatsApp Script
+              </span>
+              <button onclick="copyElementText('script-telugu', 'Telugu negotiation script copied!')" class="text-[11px] px-2.5 py-1 rounded-md bg-white hover:bg-slate-100 border border-slate-200 text-slate-800 font-semibold transition">
+                <i class="fa-regular fa-copy mr-1"></i>Copy Telugu
+              </button>
+            </div>
+            <p id="script-telugu" class="text-xs text-slate-800 leading-relaxed font-sans bg-white p-3.5 rounded-lg border border-slate-200 whitespace-pre-line"></p>
+          </div>
+        </div>
+
+        <!-- English Commercial Proposal -->
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <i class="fa-solid fa-file-contract text-forest"></i> English Commercial Proposal
+              </span>
+              <button onclick="copyElementText('script-english', 'English proposal copied!')" class="text-[11px] px-2.5 py-1 rounded-md bg-white hover:bg-slate-100 border border-slate-200 text-slate-800 font-semibold transition">
+                <i class="fa-regular fa-copy mr-1"></i>Copy English
+              </button>
+            </div>
+            <p id="script-english" class="text-xs text-slate-800 leading-relaxed font-sans bg-white p-3.5 rounded-lg border border-slate-200 whitespace-pre-line"></p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Legal Clauses for Registered Lease Deed -->
+      <div class="mt-5 pt-5 border-t border-slate-200">
+        <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3">Custom Clauses for Registered Commercial Lease Deed</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          
+          <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="font-bold text-slate-900 text-[11px]">1. 24/36-Month Lock-in (Debt Safeguard)</span>
+                <button onclick="copyClause(1)" class="text-[10px] text-forest hover:underline font-semibold">Copy</button>
+              </div>
+              <p id="clause-1" class="text-[11px] text-slate-600 leading-relaxed font-mono">
+                "In consideration of Landlord investing ₹<span class="c-capex">10,00,000</span> in civil shed erection, Tenant agrees to a mandatory lock-in period. Premature vacation triggers full forfeiture of security advance ₹<span class="c-dep">48,000</span> and liability for rent of the unexpired lock-in term."
+              </p>
+            </div>
+          </div>
+
+          <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="font-bold text-slate-900 text-[11px]">2. Escalation &amp; Registered Term</span>
+                <button onclick="copyClause(2)" class="text-[10px] text-forest hover:underline font-semibold">Copy</button>
+              </div>
+              <p id="clause-2" class="text-[11px] text-slate-600 leading-relaxed font-mono">
+                "Rent is fixed at ₹<span class="c-rent">12,000</span>/month for Year 1. Escalation shall follow <span class="c-esc">5.0%</span> adjustment moving to ₹<span class="c-esc-rent">12,600</span> in Year 2 under registered deed executed at Singarayakonda SRO."
+              </p>
+            </div>
+          </div>
+
+          <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="font-bold text-slate-900 text-[11px]">3. Electricity &amp; Upkeep Transfer</span>
+                <button onclick="copyClause(3)" class="text-[10px] text-forest hover:underline font-semibold">Copy</button>
+              </div>
+              <p id="clause-3" class="text-[11px] text-slate-600 leading-relaxed font-mono">
+                "Tenant is solely liable for actual commercial electricity consumption as billed via meter board. All internal upkeep, rolling shutter lubrication, and lighting repairs remain the exclusive liability of Tenant."
+              </p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="mt-8 border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-500">
+    <p>LeaseTune Pro &bull; Commercial Rent Auto-Balancer &amp; Capex Recovery Engine &bull; Singarayakonda / Ulavapadu Mandal Corridor</p>
+  </footer>
+
+  <!-- Application Logic -->
+  <script>
+    // State Object
+    const state = {
+      capex: 1000000,         // ₹1.0L to ₹10.0L
+      baseRent: 12000,        // ₹8,000 to ₹25,000
+      advanceMonths: 4.0,     // 2.0 to 12.0 months
+      timing: 'annual',       // 'annual', 'biannual', 'freeze2yr', 'flat1000'
+      hikeRate: 5.0,          // % or flat ₹
+      fdRate: 8.0,            // % p.a.
+      autoTuneMode: 'manual', // 'manual', 'advance', 'hike', 'rent'
+      currentView: 'owner',
+      target4YrProfit: 628800 // default target benchmark
+    };
+
+    let debtChart = null;
+
+    // DOM Elements
+    const inputCapex = document.getElementById('input-capex');
+    const inputRent = document.getElementById('input-rent');
+    const inputAdvance = document.getElementById('input-advance');
+    const inputHike = document.getElementById('input-hike');
+    const inputFd = document.getElementById('input-fd');
+
+    const dispCapex = document.getElementById('disp-capex');
+    const dispRent = document.getElementById('disp-rent');
+    const dispAdvanceMo = document.getElementById('disp-advance-mo');
+    const dispAdvanceAmt = document.getElementById('disp-advance-amt');
+    const dispHikeVal = document.getElementById('disp-hike-val');
+    const dispFd = document.getElementById('disp-fd');
+    const lblHike = document.getElementById('lbl-hike');
+
+    // Number Formatters
+    function fmtINR(val) {
+      return new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+        maximumFractionDigits: 0
+      }).format(Math.round(val));
+    }
+
+    function fmtNum(val) {
+      return new Intl.NumberFormat('en-IN').format(Math.round(val));
+    }
+
+    // Initialize App
+    function init() {
+      // Direct Event Listeners
+      inputCapex.addEventListener('input', (e) => {
+        state.capex = parseInt(e.target.value);
+        handleSliderChange('capex');
+      });
+
+      inputRent.addEventListener('input', (e) => {
+        state.baseRent = parseInt(e.target.value);
+        if (state.autoTuneMode === 'rent') {
+          setAutoTuneMode('manual');
+          showToast("Switched to Manual: Rent unlocked");
+        }
+        handleSliderChange('rent');
+      });
+
+      inputAdvance.addEventListener('input', (e) => {
+        state.advanceMonths = parseFloat(e.target.value);
+        if (state.autoTuneMode === 'advance') {
+          setAutoTuneMode('manual');
+          showToast("Switched to Manual: Advance unlocked");
+        }
+        handleSliderChange('advance');
+      });
+
+      inputHike.addEventListener('input', (e) => {
+        state.hikeRate = parseFloat(e.target.value);
+        if (state.autoTuneMode === 'hike') {
+          setAutoTuneMode('manual');
+          showToast("Switched to Manual: Hike unlocked");
+        }
+        handleSliderChange('hike');
+      });
+
+      inputFd.addEventListener('input', (e) => {
+        state.fdRate = parseFloat(e.target.value);
+        handleSliderChange('fd');
+      });
+
+      initChart();
+      updateAutoModeUI();
+      updateAll();
+    }
+
+    // Auto-Tune Mode Selector
+    function setAutoTuneMode(mode) {
+      state.autoTuneMode = mode;
+      updateAutoModeUI();
+      if (mode !== 'manual') {
+        runAutoTuner(null);
+      }
+      updateAll();
+      showToast(`Mode: ${getModeName(mode)}`);
+    }
+
+    function getModeName(mode) {
+      if (mode === 'manual') return "Manual / Free Tuner";
+      if (mode === 'advance') return "Auto-Tune Advance Months";
+      if (mode === 'hike') return "Auto-Tune Hike %";
+      if (mode === 'rent') return "Auto-Tune Base Rent";
+      return "Tuner";
+    }
+
+    function updateAutoModeUI() {
+      const modes = ['manual', 'advance', 'hike', 'rent'];
+      modes.forEach(m => {
+        const btn = document.getElementById('btn-mode-' + m);
+        if (m === state.autoTuneMode) {
+          btn.className = "p-2.5 rounded-xl border text-left font-bold transition bg-slate-900 text-white border-slate-900 shadow-xs";
+        } else {
+          btn.className = "p-2.5 rounded-xl border text-left font-semibold transition bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100";
+        }
+      });
+
+      const badge = document.getElementById('auto-mode-badge');
+      badge.innerText = state.autoTuneMode === 'manual' ? "Manual (Free Tuning)" : `${state.autoTuneMode.toUpperCase()} Auto-Tuning`;
+
+      const badgeRent = document.getElementById('badge-auto-rent');
+      const badgeAdv = document.getElementById('badge-auto-advance');
+      const badgeHike = document.getElementById('badge-auto-hike');
+
+      badgeRent.classList.add('hidden');
+      badgeAdv.classList.add('hidden');
+      badgeHike.classList.add('hidden');
+
+      if (state.autoTuneMode === 'rent') badgeRent.classList.remove('hidden');
+      if (state.autoTuneMode === 'advance') badgeAdv.classList.remove('hidden');
+      if (state.autoTuneMode === 'hike') badgeHike.classList.remove('hidden');
+    }
+
+    function lockCurrentAsTarget() {
+      const { schedule, deposit } = calculateSchedule();
+      const pureRent4Yr = schedule.slice(0, 4).reduce((sum, r) => sum + r.annualRent, 0);
+      const interest4Yr = 4 * Math.round(deposit * (state.fdRate / 100));
+      state.target4YrProfit = pureRent4Yr + interest4Yr;
+      document.getElementById('disp-target-benchmark').innerText = fmtINR(state.target4YrProfit);
+      updateAll();
+      showToast(`Locked 4-Year Target: ${fmtINR(state.target4YrProfit)}`);
+    }
+
+    // Timing Model Switcher
+    function setTiming(mode) {
+      state.timing = mode;
+      
+      const buttons = ['annual', 'biannual', 'freeze2yr', 'flat1000'];
+      buttons.forEach(b => {
+        const el = document.getElementById('opt-' + b);
+        if (b === mode) {
+          el.className = "p-2 rounded-xl border text-left font-bold transition bg-emerald-50 border-emerald-500 text-forest";
+          el.innerHTML = `<div class="flex items-center justify-between"><span>${getTimingTitle(b)}</span><i class="fa-solid fa-check text-[10px]"></i></div><div class="text-[10px] font-normal text-slate-500">${getTimingSub(b)}</div>`;
+        } else {
+          el.className = "p-2 rounded-xl border text-left font-semibold transition bg-white border-slate-200 text-slate-700";
+          el.innerHTML = `<div class="flex items-center justify-between"><span>${getTimingTitle(b)}</span></div><div class="text-[10px] font-normal text-slate-500">${getTimingSub(b)}</div>`;
+        }
+      });
+
+      const hikeQuickBtns = document.getElementById('hike-quick-buttons');
+
+      if (mode === 'flat1000') {
+        lblHike.innerText = "Flat Step-Up (₹ / Year)";
+        inputHike.min = "500";
+        inputHike.max = "3000";
+        inputHike.step = "100";
+        if (state.hikeRate < 500) state.hikeRate = 1000;
+        hikeQuickBtns.innerHTML = `
+          <span class="text-[10px] text-slate-500">Quick:</span>
+          <button onclick="setQuickHike(500)" class="text-[10px] font-mono px-2 py-0.5 rounded bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold">₹500</button>
+          <button onclick="setQuickHike(1000)" class="text-[10px] font-mono px-2 py-0.5 rounded bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold">₹1,000</button>
+          <button onclick="setQuickHike(1500)" class="text-[10px] font-mono px-2 py-0.5 rounded bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold">₹1,500</button>
+          <button onclick="setQuickHike(2000)" class="text-[10px] font-mono px-2 py-0.5 rounded bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold">₹2,000</button>
+        `;
+      } else {
+        lblHike.innerText = "Escalation Rate (%)";
+        inputHike.min = "0";
+        inputHike.max = "25";
+        inputHike.step = "0.5";
+        if (state.hikeRate > 100) state.hikeRate = 5.0;
+        hikeQuickBtns.innerHTML = `
+          <span class="text-[10px] text-slate-500">Quick:</span>
+          <button onclick="setQuickHike(5)" class="text-[10px] font-mono px-2 py-0.5 rounded bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold">5%</button>
+          <button onclick="setQuickHike(8)" class="text-[10px] font-mono px-2 py-0.5 rounded bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold">8%</button>
+          <button onclick="setQuickHike(10)" class="text-[10px] font-mono px-2 py-0.5 rounded bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold">10%</button>
+          <button onclick="setQuickHike(15)" class="text-[10px] font-mono px-2 py-0.5 rounded bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold">15%</button>
+        `;
+      }
+
+      inputHike.value = state.hikeRate;
+      handleSliderChange('timing');
+    }
+
+    function getTimingTitle(b) {
+      if (b === 'annual') return "Annual (% Every Yr)";
+      if (b === 'biannual') return "Bi-Annual (% / 2 Yrs)";
+      if (b === 'freeze2yr') return "2-Yr Freeze $\\rightarrow$ Annual";
+      if (b === 'flat1000') return "Flat ₹ Step-Up / Yr";
+      return "";
+    }
+
+    function getTimingSub(b) {
+      if (b === 'annual') return "e.g. 5% or 10% yearly";
+      if (b === 'biannual') return "e.g. 5% every 2 yrs";
+      if (b === 'freeze2yr') return "Yrs 1-2 flat, then X%/yr";
+      if (b === 'flat1000') return "e.g. +₹1,000/yr flat";
+      return "";
+    }
+
+    function setQuickHike(val) {
+      state.hikeRate = val;
+      inputHike.value = val;
+      handleSliderChange('hike');
+    }
+
+    function setQuickCapex(val) {
+      state.capex = val;
+      inputCapex.value = val;
+      handleSliderChange('capex');
+    }
+
+    // Handle Slider Changes
+    function handleSliderChange(trigger) {
+      if (state.autoTuneMode !== 'manual') {
+        runAutoTuner(trigger);
+      }
+      updateAll();
+    }
+
+    // Auto-Tuner Solver Engine
+    function runAutoTuner(trigger) {
+      const target = state.target4YrProfit;
+      const rFd = state.fdRate / 100;
+      const kAdv = 4 * rFd;
+
+      if (state.autoTuneMode === 'advance') {
+        const pureRent4Yr = computePureRentNYr(state.baseRent, state.timing, state.hikeRate, 4);
+        const requiredAdvInterest = target - pureRent4Yr;
+        const denom = state.baseRent * kAdv;
+        let calculatedMo = denom > 0 ? (requiredAdvInterest / denom) : 4;
+        calculatedMo = Math.min(12, Math.max(2, Math.round(calculatedMo * 2) / 2));
+        state.advanceMonths = calculatedMo;
+        inputAdvance.value = calculatedMo;
+
+      } else if (state.autoTuneMode === 'rent') {
+        const unitPureRent4Yr = computePureRentNYr(1000, state.timing, state.hikeRate, 4) / 1000;
+        const unitInterest4Yr = state.advanceMonths * kAdv;
+        const totalUnitYield = unitPureRent4Yr + unitInterest4Yr;
+        if (totalUnitYield > 0) {
+          let calculatedRent = target / totalUnitYield;
+          let clampedRent = Math.min(25000, Math.max(8000, Math.round(calculatedRent / 500) * 500));
+          state.baseRent = clampedRent;
+          inputRent.value = clampedRent;
+        }
+
+      } else if (state.autoTuneMode === 'hike') {
+        const deposit = state.baseRent * state.advanceMonths;
+        const interest4Yr = deposit * kAdv;
+        const targetRent4Yr = target - interest4Yr;
+
+        if (state.timing === 'flat1000') {
+          // PureRent4Yr = 48*R1 + 12*S*(0 + 1 + 2 + 3) = 48*R1 + 72*S
+          const requiredS = (targetRent4Yr - 48 * state.baseRent) / 72;
+          let clampedS = Math.min(3000, Math.max(500, Math.round(requiredS / 100) * 100));
+          state.hikeRate = clampedS;
+          inputHike.value = clampedS;
+        } else {
+          let low = 0.0, high = 0.25, bestP = 0.05;
+          for (let iter = 0; iter < 15; iter++) {
+            let mid = (low + high) / 2;
+            let rTest = computePureRentNYr(state.baseRent, state.timing, mid * 100, 4);
+            if (rTest < targetRent4Yr) low = mid;
+            else high = mid;
+            bestP = mid;
+          }
+          let clampedP = Math.min(25, Math.max(0, Math.round(bestP * 200) / 2));
+          state.hikeRate = clampedP;
+          inputHike.value = clampedP;
+        }
+      }
+    }
+
+    function computePureRentNYr(R1, timing, hike, years) {
+      const p = hike / 100;
+      let sum = 0;
+      for (let y = 1; y <= years; y++) {
+        let mRent = 0;
+        if (timing === 'annual') {
+          // Annual increment every year
+          mRent = R1 * Math.pow(1 + p, y - 1);
+        } else if (timing === 'biannual') {
+          // Bi-Annual every 2 years
+          const step = Math.floor((y - 1) / 2);
+          mRent = R1 * Math.pow(1 + p, step);
+        } else if (timing === 'freeze2yr') {
+          // 2-Year Freeze, then Annual %
+          if (y === 1 || y === 2) mRent = R1;
+          else mRent = R1 * Math.pow(1 + p, y - 2);
+        } else if (timing === 'flat1000') {
+          mRent = R1 + (y - 1) * hike;
+        }
+        sum += Math.round(mRent) * 12;
+      }
+      return sum;
+    }
+
+    // Schedule Calculation (6 Years)
+    function calculateSchedule() {
+      const R1 = state.baseRent;
+      const p = state.hikeRate / 100;
+      const deposit = Math.round(R1 * state.advanceMonths);
+      const annualDepositInt = Math.round(deposit * (state.fdRate / 100));
+
+      const schedule = [];
+      let cumRent = 0;
+      let unrecoveredDebt = state.capex;
+
+      for (let y = 1; y <= 6; y++) {
+        let rent = 0;
+        if (state.timing === 'annual') {
+          // e.g. 12K + 5% yearly -> Y1: 12000, Y2: 12600, Y3: 13230, Y4: 13892
+          rent = R1 * Math.pow(1 + p, y - 1);
+        } else if (state.timing === 'biannual') {
+          // e.g. 12K + 5%/2yr -> Y1-2: 12000, Y3-4: 12600, Y5-6: 13230
+          const step = Math.floor((y - 1) / 2);
+          rent = R1 * Math.pow(1 + p, step);
+        } else if (state.timing === 'freeze2yr') {
+          // e.g. 12K + freeze 2 yr + 10%/yr -> Y1-2: 12000, Y3: 13200, Y4: 14520
+          if (y === 1 || y === 2) rent = R1;
+          else rent = R1 * Math.pow(1 + p, y - 2);
+        } else if (state.timing === 'flat1000') {
+          rent = R1 + (y - 1) * state.hikeRate;
+        }
+
+        rent = Math.round(rent);
+        const annualRent = rent * 12;
+        cumRent += annualRent;
+        unrecoveredDebt = Math.max(0, unrecoveredDebt - annualRent);
+
+        schedule.push({
+          year: y,
+          monthlyRent: rent,
+          annualRent: annualRent,
+          depositInt: annualDepositInt,
+          cumRent: cumRent,
+          unrecoveredDebt: unrecoveredDebt
+        });
+      }
+
+      return { deposit, annualDepositInt, schedule };
+    }
+
+    // Payoff Month Calculator
+    function calculatePayoffMonth(schedule, capex) {
+      let earned = 0;
+      let monthCount = 0;
+      for (let y = 0; y < schedule.length; y++) {
+        const mRent = schedule[y].monthlyRent;
+        for (let m = 1; m <= 12; m++) {
+          monthCount++;
+          earned += mRent;
+          if (earned >= capex) return monthCount;
+        }
+      }
+      return monthCount > 72 ? '72+' : monthCount;
+    }
+
+    // Presets Applicator
+    function applyPreset(preset) {
+      if (preset === 'tenantA') {
+        state.baseRent = 11000;
+        state.advanceMonths = 3.0;
+        state.timing = 'freeze2yr';
+        state.hikeRate = 5.0;
+      } else if (preset === 'tenantB') {
+        state.baseRent = 12000;
+        state.advanceMonths = 4.0;
+        state.timing = 'biannual';
+        state.hikeRate = 5.0;
+      } else if (preset === 'tenantC') {
+        // EXACT OPTION REQUESTED BY USER: 12K + 5% YEARLY
+        state.baseRent = 12000;
+        state.advanceMonths = 4.0;
+        state.timing = 'annual';
+        state.hikeRate = 5.0;
+      } else if (preset === 'balancedParity') {
+        state.baseRent = 12000;
+        state.advanceMonths = 4.0;
+        state.timing = 'biannual';
+        state.hikeRate = 10.0;
+      } else if (preset === 'guard10L') {
+        state.baseRent = 12000;
+        state.advanceMonths = 6.0;
+        state.timing = 'annual';
+        state.hikeRate = 10.0;
+        state.capex = 1000000;
+        inputCapex.value = state.capex;
+      }
+
+      inputRent.value = state.baseRent;
+      inputAdvance.value = state.advanceMonths;
+      inputHike.value = state.hikeRate;
+      setTiming(state.timing);
+      handleSliderChange('preset');
+      showToast(`Applied preset: ${preset}`);
+    }
+
+    // View Switcher
+    function switchView(mode) {
+      state.currentView = mode;
+      const btnOwner = document.getElementById('btn-tab-owner');
+      const btnTenant = document.getElementById('btn-tab-tenant');
+      const viewOwner = document.getElementById('view-owner');
+      const viewTenant = document.getElementById('view-tenant');
+
+      if (mode === 'owner') {
+        btnOwner.className = "active-view-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all";
+        btnTenant.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-slate-600 hover:text-slate-900 transition-all";
+        viewOwner.classList.remove('hidden');
+        viewTenant.classList.add('hidden');
+      } else {
+        btnTenant.className = "active-view-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all";
+        btnOwner.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-slate-600 hover:text-slate-900 transition-all";
+        viewTenant.classList.remove('hidden');
+        viewOwner.classList.add('hidden');
+      }
+    }
+
+    // Master Render Engine
+    function updateAll() {
+      // 1. Text Labels
+      dispCapex.innerText = fmtINR(state.capex);
+      dispRent.innerText = fmtINR(state.baseRent);
+      dispAdvanceMo.innerText = `${state.advanceMonths.toFixed(1)} Months`;
+      const depositAmt = Math.round(state.baseRent * state.advanceMonths);
+      dispAdvanceAmt.innerText = `(${fmtINR(depositAmt)})`;
+      dispHikeVal.innerText = state.timing === 'flat1000' ? fmtINR(state.hikeRate) : `${state.hikeRate.toFixed(1)}%`;
+      dispFd.innerText = `${state.fdRate.toFixed(1)}% p.a.`;
+      document.getElementById('tbl-capex-disp').innerText = fmtNum(state.capex);
+      document.querySelectorAll('.lbl-fd-pct').forEach(el => el.innerText = `${state.fdRate.toFixed(1)}%`);
+
+      // Banner Updates
+      document.getElementById('banner-capex-disp').innerText = fmtINR(state.capex);
+      const monthlyCarryingCost = Math.round(state.capex * (state.fdRate / 100) / 12);
+      document.getElementById('banner-carrying-cost').innerText = `${fmtINR(monthlyCarryingCost)}/mo`;
+
+      const riskBanner = document.getElementById('high-capex-banner');
+      const riskPill = document.getElementById('banner-risk-pill');
+      if (state.capex >= 600000) {
+        riskBanner.classList.remove('hidden');
+        riskPill.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200 text-amber-900";
+        riskPill.innerText = "High Capex Exposure";
+      } else {
+        riskPill.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-forest";
+        riskPill.innerText = "Moderate / Low Capex";
+      }
+
+      // 2. Calculations
+      const { deposit, annualDepositInt, schedule } = calculateSchedule();
+      const pureRent4Yr = schedule.slice(0, 4).reduce((sum, r) => sum + r.annualRent, 0);
+      const interest4Yr = 4 * annualDepositInt;
+      const realization4Yr = pureRent4Yr + interest4Yr;
+
+      // 3. Parity Health Meter
+      const target = state.target4YrProfit;
+      const diff = realization4Yr - target;
+      const parityPill = document.getElementById('parity-status-pill');
+      const parityDiff = document.getElementById('parity-diff-disp');
+      const parityBar = document.getElementById('parity-progress-bar');
+
+      document.getElementById('disp-target-benchmark').innerText = fmtINR(target);
+
+      if (diff >= 1500) {
+        parityPill.className = "text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-forest";
+        parityPill.innerHTML = `<i class="fa-solid fa-arrow-trend-up mr-1"></i>Owner Surplus (+${fmtINR(diff)})`;
+        parityDiff.innerText = `+${fmtINR(diff)} vs Benchmark`;
+        parityBar.className = "h-full bg-forest transition-all duration-300";
+        parityBar.style.width = "100%";
+      } else if (diff <= -1500) {
+        parityPill.className = "text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800";
+        parityPill.innerHTML = `<i class="fa-solid fa-arrow-trend-down mr-1"></i>Owner Deficit (${fmtINR(diff)})`;
+        parityDiff.innerText = `${fmtINR(diff)} vs Benchmark`;
+        parityBar.className = "h-full bg-rose-500 transition-all duration-300";
+        const pct = Math.max(25, Math.min(100, Math.round((realization4Yr / target) * 100)));
+        parityBar.style.width = `${pct}%`;
+      } else {
+        parityPill.className = "text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-800";
+        parityPill.innerHTML = `<i class="fa-solid fa-equals mr-1"></i>Balanced Parity (±0)`;
+        parityDiff.innerText = `Exact Benchmark Match`;
+        parityBar.className = "h-full bg-slate-700 transition-all duration-300";
+        parityBar.style.width = "100%";
+      }
+
+      // 4. KPI Cards
+      const day1Pct = ((deposit / state.capex) * 100).toFixed(1);
+      document.getElementById('kpi-day1-cash').innerText = fmtINR(deposit);
+      document.getElementById('kpi-day1-pct').innerText = `${day1Pct}% of Capex`;
+
+      const payoffMo = calculatePayoffMonth(schedule, state.capex);
+      const payoffEl = document.getElementById('kpi-breakeven-mo');
+      const payoffDetail = document.getElementById('kpi-breakeven-detail');
+      const chartBadge = document.getElementById('chart-crossover-badge');
+
+      if (payoffMo === '72+') {
+        payoffEl.innerText = "72+ Months";
+        payoffDetail.innerText = "Exceeds 6 Years";
+        chartBadge.className = "text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-200";
+        chartBadge.innerText = "Payoff > 6 Years";
+      } else {
+        payoffEl.innerText = `Month ${payoffMo}`;
+        const yrs = (payoffMo / 12).toFixed(1);
+        payoffDetail.innerText = `${yrs} Years to Zero Debt`;
+        chartBadge.className = "text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-forest border border-emerald-300";
+        chartBadge.innerText = `Zero Debt by Month ${payoffMo}`;
+      }
+
+      document.getElementById('kpi-cap-cost').innerText = `${fmtINR(monthlyCarryingCost)} / mo`;
+      const netLandYield = state.baseRent - monthlyCarryingCost;
+      const netLandEl = document.getElementById('kpi-land-yield');
+      netLandEl.innerText = `Net Land: ${fmtINR(netLandYield)}/mo`;
+
+      document.getElementById('kpi-4yr-total').innerText = fmtINR(realization4Yr);
+
+      // 5. Ledger Table
+      const tbody = document.getElementById('schedule-tbody');
+      tbody.innerHTML = '';
+      schedule.forEach(row => {
+        const isPaidOff = row.unrecoveredDebt === 0;
+        const statusBadge = isPaidOff 
+          ? `<span class="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full"><i class="fa-solid fa-check mr-1"></i>Capex Cleared</span>`
+          : `<span class="text-[10px] font-mono text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full">₹${fmtNum(row.unrecoveredDebt)} debt</span>`;
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50 transition";
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 font-bold text-slate-900">Year ${row.year}</td>
+          <td class="py-2.5 px-3 font-semibold text-forest">${fmtINR(row.monthlyRent)}/mo</td>
+          <td class="py-2.5 px-3">${fmtINR(row.annualRent)}</td>
+          <td class="py-2.5 px-3 text-slate-500">+${fmtINR(row.depositInt)}</td>
+          <td class="py-2.5 px-3 font-bold ${row.unrecoveredDebt > 0 ? 'text-amber-800' : 'text-slate-400'}">${fmtINR(row.unrecoveredDebt)}</td>
+          <td class="py-2.5 px-3">${statusBadge}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // 6. Tenant Pitch Deck
+      document.getElementById('tenant-hero-rent').innerHTML = `${fmtINR(state.baseRent)}<span class="text-xs font-normal text-slate-500">/mo</span>`;
+      const dailyBurden = Math.round((state.baseRent * 12) / 365);
+      document.getElementById('tenant-daily-cost').innerText = `₹${dailyBurden} / day`;
+
+      let runwayDesc = "Predictable Step-Up";
+      if (state.timing === 'freeze2yr') runwayDesc = "730 Days Frozen";
+      else if (state.timing === 'biannual') runwayDesc = "2-Year Fixed Blocks";
+      else if (state.timing === 'annual') runwayDesc = `Predictable ${state.hikeRate.toFixed(1)}% Annual Step`;
+      document.getElementById('tenant-runway').innerText = runwayDesc;
+
+      document.getElementById('tenant-absorbed-capex').innerText = `₹${(state.capex / 100000).toFixed(1)}L Infrastructure`;
+      document.getElementById('tenant-deposit-disp').innerText = fmtINR(deposit);
+
+      document.getElementById('road-p1').innerText = `${fmtINR(schedule[0].monthlyRent)} / mo (Yr 1)`;
+      document.getElementById('road-p2').innerText = `${fmtINR(schedule[1].monthlyRent)} / mo (Yr 2)`;
+      document.getElementById('road-p3').innerText = `${fmtINR(schedule[2].monthlyRent)} / mo (Yr 3+)`;
+
+      // 7. Scripts & Clauses
+      updateScripts(schedule, deposit, dailyBurden);
+
+      // 8. Update Chart
+      updateChart(schedule);
+    }
+
+    // Dynamic Negotiation Scripts
+    function updateScripts(schedule, deposit, dailyBurden) {
+      const R1 = state.baseRent;
+      const capexLakhs = (state.capex / 100000).toFixed(1);
+
+      let escDesc = "";
+      let escTelugu = "";
+
+      if (state.timing === 'annual') {
+        escDesc = `${state.hikeRate.toFixed(1)}% predictable annual increase each year`;
+        escTelugu = `సంవత్సరానికి కేవలం ${state.hikeRate.toFixed(1)}% ప్రామాణిక పెంపుతో`;
+      } else if (state.timing === 'biannual') {
+        escDesc = `${state.hikeRate.toFixed(1)}% increase once every 2 years`;
+        escTelugu = `ప్రతి రెండేళ్లకు ఒకసారి మాత్రమే ${state.hikeRate.toFixed(1)}% పెంపుతో`;
+      } else if (state.timing === 'freeze2yr') {
+        escDesc = `zero hike for first 2 years, then ${state.hikeRate.toFixed(1)}% yearly from Year 3`;
+        escTelugu = `మొదటి రెండేళ్లు అద్దె పెంచకుండా, 3వ సంవత్సరం నుంచి ${state.hikeRate.toFixed(1)}% చొప్పున`;
+      } else if (state.timing === 'flat1000') {
+        escDesc = `flat ₹${state.hikeRate} annual step-up`;
+        escTelugu = `సంవత్సరానికి కేవలం ₹${state.hikeRate} ఫ్లాట్ పెంపుతో`;
+      }
+
+      // Telugu Script
+      const teluguScript = `నమస్కారం అండి,
+
+ఉలవపాడు రోడ్డు వద్ద మీ వ్యాపారం కోసం మేము రూ. ${capexLakhs} లక్షలు సొంత ఖర్చుతో వెచ్చించి పూర్తి సివిల్ ఫౌండేషన్స్, హెవీ ట్రస్సులు, రోలింగ్ షట్టర్ మరియు 3-ఫేస్ కమర్షియల్ పవర్‌తో పటిష్టమైన షెడ్ సిద్ధం చేశాము. 
+
+మీ వ్యాపార ప్రారంభానికి అనుకూలంగా మేము ఇచ్చే ఫైనల్ ఆఫర్:
+
+1. ప్రారంభ అద్దె నెలకు కేవలం రూ. ${fmtNum(R1)} మాత్రమే (రోజుకు సుమారు రూ. ${dailyBurden} మాత్రమే పడుతుంది).
+2. ఇంక్రిమెంట్ నిబంధన: ${escTelugu} మాత్రమే అడ్జస్ట్ చేయబడుతుంది.
+3. మేము పెట్టిన భారీ నిర్మాణ ఖర్చు దృష్ట్యా, ${state.advanceMonths.toFixed(1)} నెలల అడ్వాన్స్ డిపాజిట్ రూ. ${fmtNum(deposit)} ఇవ్వాలి. ఇది రిజిస్టర్డ్ డీడ్‌లో నమోదు చేయబడే మీ పూర్తి రీఫండబుల్ సెక్యూరిటీ డిపాజిట్.
+4. రెగ్యులర్ 3 సంవత్సరాల రిజిస్టర్డ్ లీజ్ ద్వారా మీ వ్యాపారానికి పూర్తి స్థిరత్వం లభిస్తుంది.
+
+ఇంత రెడీమేడ్ ఇన్ఫ్రాస్ట్రక్చర్‌కు ఇది ఇరువైపులా అత్యంత న్యాయమైన మరియు లాభదాయకమైన ప్రతిపాదన.`;
+
+      document.getElementById('script-telugu').innerText = teluguScript;
+
+      // English Proposal
+      const englishScript = `Dear Prospective Partner,
+
+Regarding the 864 sq ft road-facing commercial shed in Ulavapadu: We have invested ₹${capexLakhs} Lakhs out-of-pocket in heavy civil structures, high clearance roofing, and commercial power so that you incur ZERO structural setup debt.
+
+To support your operational runway, here is our balanced commercial proposal:
+
+• Starting Rent: ₹${fmtNum(R1)}/month (~₹${dailyBurden}/day).
+• Escalation Terms: ${escDesc}.
+• Security Advance: ${state.advanceMonths.toFixed(1)} months (₹${fmtNum(deposit)}), held under registered lease deed as a 100% refundable capital asset.
+• Tenure: 3-Year Registered Commercial Lease with mutual lock-in protections.
+
+This provides maximum operational certainty for your business while amortizing our civil construction outlay.`;
+
+      document.getElementById('script-english').innerText = englishScript;
+
+      // Update Clause Placeholders
+      document.querySelectorAll('.c-capex').forEach(el => el.innerText = fmtNum(state.capex));
+      document.querySelectorAll('.c-dep').forEach(el => el.innerText = fmtNum(deposit));
+      document.querySelectorAll('.c-rent').forEach(el => el.innerText = fmtNum(R1));
+      document.querySelectorAll('.c-esc').forEach(el => el.innerText = state.timing === 'flat1000' ? `₹${state.hikeRate}` : `${state.hikeRate.toFixed(1)}%`);
+      document.querySelectorAll('.c-esc-rent').forEach(el => el.innerText = fmtNum(schedule[1].monthlyRent));
+    }
+
+    // Chart.js Setup
+    function initChart() {
+      const ctx = document.getElementById('debtChart').getContext('2d');
+      debtChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ['Start', 'Yr 1', 'Yr 2', 'Yr 3', 'Yr 4', 'Yr 5', 'Yr 6'],
+          datasets: [
+            {
+              label: 'Cumulative Pure Rent Collected',
+              data: [0, 0, 0, 0, 0, 0, 0],
+              borderColor: '#047857',
+              backgroundColor: 'rgba(4, 120, 87, 0.08)',
+              borderWidth: 2.5,
+              fill: true,
+              pointBackgroundColor: '#047857',
+              pointRadius: 4,
+              tension: 0.2
+            },
+            {
+              label: 'Unrecovered Capex Debt Balance',
+              data: [0, 0, 0, 0, 0, 0, 0],
+              borderColor: '#b45309',
+              borderWidth: 2.5,
+              pointBackgroundColor: '#b45309',
+              pointRadius: 4,
+              fill: false,
+              tension: 0.2
+            },
+            {
+              label: 'Initial Capex Debt (Flat Benchmark)',
+              data: [0, 0, 0, 0, 0, 0, 0],
+              borderColor: '#94a3b8',
+              borderWidth: 1.5,
+              borderDash: [5, 5],
+              pointRadius: 0,
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: {
+                boxWidth: 12,
+                font: { family: 'Plus Jakarta Sans', size: 11, weight: '600' },
+                color: '#1e293b'
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return ` ${context.dataset.label}: ₹${fmtNum(context.raw)}`;
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: { color: '#e2e8f0' },
+              ticks: {
+                font: { family: 'JetBrains Mono', size: 10 },
+                color: '#64748b',
+                callback: function(value) {
+                  return '₹' + (value / 100000).toFixed(1) + 'L';
+                }
+              }
+            },
+            x: {
+              grid: { display: false },
+              ticks: {
+                font: { family: 'Plus Jakarta Sans', size: 11, weight: '500' },
+                color: '#1e293b'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function updateChart(schedule) {
+      if (!debtChart) return;
+
+      const rentData = [0];
+      const debtData = [state.capex];
+      schedule.forEach(item => {
+        rentData.push(item.cumRent);
+        debtData.push(item.unrecoveredDebt);
+      });
+
+      const flatBenchmark = Array(7).fill(state.capex);
+
+      debtChart.data.datasets[0].data = rentData;
+      debtChart.data.datasets[1].data = debtData;
+      debtChart.data.datasets[2].data = flatBenchmark;
+      debtChart.update();
+    }
+
+    // Clipboard Helpers
+    function copyClause(num) {
+      const text = document.getElementById(`clause-${num}`).innerText.trim();
+      copyText(text, `Clause ${num} copied to clipboard!`);
+    }
+
+    function copyElementText(id, msg) {
+      const text = document.getElementById(id).innerText.trim();
+      copyText(text, msg);
+    }
+
+    function copyText(text, successMsg) {
+      const temp = document.createElement("textarea");
+      temp.value = text;
+      temp.style.position = "fixed";
+      temp.style.left = "-999999px";
+      document.body.appendChild(temp);
+      temp.focus();
+      temp.select();
+      
+      try {
+        const ok = document.execCommand('copy');
+        if (ok) showToast(successMsg);
+        else showToast("Failed to copy. Please copy manually.");
+      } catch (err) {
+        showToast("Error copying text.");
+      }
+      document.body.removeChild(temp);
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-msg');
+      toastMsg.innerText = msg;
+      toast.classList.remove('opacity-0', 'translate-y-20', 'pointer-events-none');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'translate-y-20', 'pointer-events-none');
+      }, 2500);
+    }
+
+    window.onload = function() {
+      init();
+    };
+  </script>
+</body>
+</html>
